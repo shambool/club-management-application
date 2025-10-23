@@ -12,13 +12,9 @@ export default function Feed() {
   return (
     <View style={styles.container}>
       {/* Top Section: Logo + Saved Events */}
+
+      
       <Header />
-
-      {/* Search Placeholder */}
-      <SearchBar value={''} onChangeText={function (text: string): void {
-        throw new Error('Function not implemented.');
-      } } />
-
       {/* Scrollable Event Feed */}
       <FlatList
         data={mockEvents}
