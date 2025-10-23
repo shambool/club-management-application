@@ -7,8 +7,8 @@ import type { ClubProfile } from '@/types/clubProfile';
 export default function ClubCard({ club }: { club: ClubProfile }) {
   const router = useRouter();
   const shortDesc =
-    club.description.length > 25
-      ? club.description.slice(0, 25) + '...'
+    club.description.length > 30
+      ? club.description.slice(0, 30) + '...'
       : club.description;
 
   return (

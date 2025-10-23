@@ -29,7 +29,7 @@ const TabLayout = () => {
       
     >
       <Tabs.Screen
-        name="index"
+        name="feed"
         options={{
           tabBarIcon: ({ size, color }) => (
             <Ionicons name="home" size={size} color={color} />

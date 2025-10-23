@@ -6,7 +6,7 @@ import EventCard from '@/components/EventCard';
 import { mockEvents } from '@/constants/mockEvents';
 import type { Event } from '@/types/event';
 
-export default function Index() {
+export default function Feed() {
   const renderEvent = ({ item }: { item: Event }) => <EventCard event={item} />;
 
   return (
