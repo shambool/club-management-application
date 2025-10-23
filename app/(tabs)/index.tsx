@@ -15,7 +15,9 @@ export default function Index() {
       <Header />
 
       {/* Search Placeholder */}
-      <SearchBar />
+      <SearchBar value={''} onChangeText={function (text: string): void {
+        throw new Error('Function not implemented.');
+      } } />
 
       {/* Scrollable Event Feed */}
       <FlatList

@@ -52,14 +52,6 @@ const TabLayout = () => {
           ),
         }}
       />
-      <Tabs.Screen
-        name="schedule"
-        options={{
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="calendar" size={size} color={color} />
-          ),
-        }}
-      />
     </Tabs>
   );
 };
