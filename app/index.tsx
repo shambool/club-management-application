@@ -2,7 +2,7 @@ import React from 'react'
 import { Redirect } from 'expo-router'
 
 const Index = () => {
-  return <Redirect href="/login"/>
+  return <Redirect href="/(tabs)/feed"/>
 }
 
 export default Index
