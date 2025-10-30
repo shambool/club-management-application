@@ -1,11 +1,14 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import type { ClubProfile } from '@/types/clubProfile';
 
+const PLACEHOLDER_IMAGE =
+  'https://via.placeholder.com/150?text=No+Image'; // fallback image
+
 export default function ClubCard({ club }: { club: ClubProfile }) {
   const router = useRouter();
+
   const shortDesc =
     club.description.length > 30
       ? club.description.slice(0, 30) + '...'
@@ -19,7 +22,10 @@ export default function ClubCard({ club }: { club: ClubProfile }) {
       }
     >
       <View style={styles.imageWrapper}>
-        <Image source={{ uri: club.clubLogo }} style={styles.image} />
+        <Image
+          source={{ uri: club.clubLogo || PLACEHOLDER_IMAGE }}
+          style={styles.image}
+        />
       </View>
 
       <View style={styles.info}>
@@ -48,25 +54,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
+    backgroundColor: '#f0f0f0', // subtle background if image is loading
   },
   image: {
     width: '100%',
     height: 120,
     borderRadius: 12,
-  },
-  scoreTag: {
-    position: 'absolute',
-    bottom: 8,
-    left: 8,
-    backgroundColor: '#555',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  scoreText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '500',
   },
   info: {
     marginTop: 8,

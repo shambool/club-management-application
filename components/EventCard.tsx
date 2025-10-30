@@ -10,7 +10,7 @@ export default function EventCard({ event }: { event: Event }) {
     <View style={styles.card}>
       {/* Club Info Section */}
       <View style={styles.clubRow}>
-        <Image source={{ uri: event.club.clubLogo }} style={styles.clubLogo} />
+        <Image source={{ uri: event.club.clubLogo?? undefined }} style={styles.clubLogo} />
         <Text style={styles.clubName}>{event.club.clubName}</Text>
         <Text style={styles.separator}>•</Text>
         <Text style={styles.eventTitle}>{event.eventTitle}</Text>

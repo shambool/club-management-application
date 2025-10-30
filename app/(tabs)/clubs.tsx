@@ -1,29 +1,67 @@
-import React, { useState, useMemo } from 'react';
-import { View, FlatList, StyleSheet, Dimensions } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, FlatList, StyleSheet, Dimensions, Text } from 'react-native';
 import SearchBar from '@/components/SearchBar';
 import ClubCard from '@/components/ClubCard';
-import { mockClubProfiles } from '@/constants/mockClubProfiles';
+import { getAllClubs, Club } from '@/api/clubs';
 import type { ClubProfile } from '@/types/clubProfile';
 
 const numColumns = 2;
 const { width } = Dimensions.get('window');
 const cardWidth = width / numColumns - 20;
 
-export default function ClubsScreen() {
+export default function clubs() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [clubs, setClubs] = useState<Club[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // Fetch clubs from backend
+  useEffect(() => {
+    const fetchClubs = async () => {
+      try {
+        const data = await getAllClubs();
+        setClubs(data);
+      } catch (error) {
+        console.error('Error fetching clubs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClubs();
+  }, []);
+
+  // Filter clubs based on search query
   const filteredClubs = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return mockClubProfiles.filter((club) =>
-      club.clubName.toLowerCase().includes(query)
+    return clubs.filter((club) =>
+      club.name.toLowerCase().includes(query)
     );
-  }, [searchQuery]);
+  }, [searchQuery, clubs]);
 
-  const renderClub = ({ item }: { item: ClubProfile }) => (
-    <View style={{ width: cardWidth }}>
-      <ClubCard club={item} />
-    </View>
-  );
+  // Render each club
+  const renderClub = ({ item }: { item: Club }) => {
+    // Map Club → ClubProfile for ClubCard component
+    const clubProfile: ClubProfile = {
+      clubId: item.id,
+      clubName: item.name,
+      description: item.description || '',
+      clubLogo: item.logo_url || '',
+    };
+
+    return (
+      <View style={{ width: cardWidth, marginBottom: 12 }}>
+        <ClubCard club={clubProfile} />
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading clubs...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -37,7 +75,7 @@ export default function ClubsScreen() {
 
       <FlatList
         data={filteredClubs}
-        keyExtractor={(item) => item.clubId}
+        keyExtractor={(item) => item.id}
         renderItem={renderClub}
         numColumns={numColumns}
         showsVerticalScrollIndicator={false}
