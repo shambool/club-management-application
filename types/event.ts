@@ -3,13 +3,20 @@ import { ClubProfile } from "./clubProfile";
 
 
 export type Event = {
-  club: ClubProfile;   
   eventId: string;       // unique event identifier
   eventTitle: string;
   eventPoster: string;
-  storageId: string;      // used for deletion / Firebase reference
   attending: number;      // number of attendees
   hasVolunteerOption?: boolean; // if the event has a volunteer option
-  description: EventDescription[];
-  date: string;
+  startDate: string;    // ISO date string
+  duration: string;
+  place: string;
+  desc: string;
+  club: ClubProfile;  
+  externalLink?: string; 
+  Attendee_points?: number; 
+  Volunteer_points?: number; 
+  createdAt: string;
 };
+
+

@@ -4,42 +4,47 @@ import { Ionicons } from "@expo/vector-icons";
 import type { Event } from "@/types/event";
 
 export default function EventCard({ event }: { event: Event }) {
-  const mainDesc = event.description[0];
-
   return (
     <View style={styles.card}>
       {/* Club Info Section */}
       <View style={styles.clubRow}>
-        <Image source={{ uri: event.club.clubLogo?? undefined }} style={styles.clubLogo} />
-        <Text style={styles.clubName}>{event.club.clubName}</Text>
+        {event.club.logo_url ? (
+          <Image source={{ uri: event.club.logo_url }} style={styles.clubLogo} />
+        ) : (
+          <View style={[styles.clubLogo, { backgroundColor: "#eee" }]} />
+        )}
+        <Text style={styles.clubName}>{event.club.name}</Text>
         <Text style={styles.separator}>•</Text>
         <Text style={styles.eventTitle}>{event.eventTitle}</Text>
       </View>
 
       {/* Poster */}
-      <Image source={{ uri: event.eventPoster }} style={styles.poster} />
+      {event.eventPoster ? (
+        <Image source={{ uri: event.eventPoster }} style={styles.poster} />
+      ) : null}
 
       {/* Action Icons */}
       <View style={styles.actions}>
         <TouchableOpacity>
-          <Ionicons name="checkmark-circle-outline" size={22} />
+          <Ionicons name="checkmark-circle-outline" size={22} color="#333" />
         </TouchableOpacity>
         <TouchableOpacity>
-          <Ionicons name="chatbubble-ellipses-outline" size={22} />
+          <Ionicons name="chatbubble-ellipses-outline" size={22} color="#333" />
         </TouchableOpacity>
         {event.hasVolunteerOption ? (
           <TouchableOpacity>
-            <Ionicons name="hand-left-outline" size={22} />
+            <Ionicons name="hand-left-outline" size={22} color="#333" />
           </TouchableOpacity>
         ) : (
           <View style={{ width: 22 }} />
         )}
       </View>
+
       {/* Description */}
       <View style={styles.desc}>
-        <Text>🕒 {mainDesc.time}</Text>
-        <Text>📍 {mainDesc.place}</Text>
-        <Text>{mainDesc.desc}</Text>
+        <Text>🕒 {event.startDate} ({event.duration})</Text>
+        <Text>📍 {event.place}</Text>
+        <Text>{event.desc}</Text>
       </View>
 
       <Text style={styles.attending}>👥 {event.attending} attending</Text>
@@ -65,7 +70,7 @@ const styles = StyleSheet.create({
   clubLogo: { width: 32, height: 32, borderRadius: 16, marginRight: 8 },
   clubName: { fontWeight: "bold", fontSize: 14 },
   separator: { marginHorizontal: 6, color: "#999" },
-  eventTitle: { fontSize: 14, color: "#333" },
+  eventTitle: { fontSize: 14, color: "#333", flexShrink: 1 },
   poster: { width: "100%", height: 200, borderRadius: 8, marginBottom: 8 },
   actions: {
     flexDirection: "row",

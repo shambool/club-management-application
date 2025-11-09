@@ -11,14 +11,14 @@ export default function Feed() {
 
   return (
     <View style={styles.container}>
-      {/* Top Section: Logo + Saved Events */}
-
-      
+      {/* Top Section: Header and Search */}
       <Header />
+
+
       {/* Scrollable Event Feed */}
       <FlatList
         data={mockEvents}
-        keyExtractor={(item) => item.storageId}
+        keyExtractor={(item) => item.eventId}
         renderItem={renderEvent}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
@@ -35,6 +35,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   listContent: {
-    paddingBottom: 80, // leaves space below the last event
+    paddingBottom: 80, // space below the last event
   },
 });

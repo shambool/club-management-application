@@ -1,25 +1,32 @@
-import { mockClubProfiles } from '@/constants/mockClubProfiles';
-import { mockEvents } from '@/constants/mockEvents';
-import type { ClubProfile } from '@/types/clubProfile';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
-import { Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useMemo } from "react";
+import {
+  View,
+  Text,
+  Image,
+  FlatList,
+  TouchableOpacity,
+  Dimensions,
+  StyleSheet,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { mockClubProfiles } from "@/constants/mockClubProfiles";
+import { mockEvents } from "@/constants/mockEvents";
+import type { Event } from "@/types/event";
 
-const { width } = Dimensions.get('window');
-const numColumns = 3; // 3 posters per row
+const { width } = Dimensions.get("window");
+const numColumns = 3;
 
 export default function ClubDetailScreen() {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const club = mockClubProfiles.find((c) => c.clubId === id) as ClubProfile | undefined;
+  const club = mockClubProfiles.find((c) => c.id === id);
 
-  const clubEvents = useMemo(() => {
+  const clubEvents = useMemo<Event[]>(() => {
     if (!club) return [];
-    return mockEvents
-      .filter((event) => club.eventIds.includes(event.storageId))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // newest first
+    // Filter only events belonging to this club
+    return mockEvents.filter((event) => event.club.id === club.id);
   }, [club]);
 
   if (!club) {
@@ -33,7 +40,7 @@ export default function ClubDetailScreen() {
   return (
     <View style={styles.container}>
       {/* Back Button */}
-      <TouchableOpacity style={styles.backButton} onPress={() => router.push('/(tabs)/clubs')}>
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={24} color="black" />
       </TouchableOpacity>
 
@@ -41,12 +48,28 @@ export default function ClubDetailScreen() {
         ListHeaderComponent={
           <>
             {/* Club Image */}
-            <Image source={{ uri: club.clubLogo }} style={styles.logo} />
+            <Image source={{ uri: club.logo_url }} style={styles.logo} />
 
             {/* Club Info */}
             <View style={styles.infoCard}>
-              <Text style={styles.title}>{club.clubName}</Text>
+              <Text style={styles.title}>{club.name}</Text>
               <Text style={styles.description}>{club.description}</Text>
+
+              {/* Extra Club Info */}
+              <View style={styles.metaBox}>
+                <Text style={styles.meta}>
+                  <Text style={styles.metaLabel}>Founded: </Text>
+                  {club.created_at || "N/A"}
+                </Text>
+                <Text style={styles.meta}>
+                  <Text style={styles.metaLabel}>Original President: </Text>
+                  {club.original_President || "N/A"}
+                </Text>
+                <Text style={styles.meta}>
+                  <Text style={styles.metaLabel}>Current President: </Text>
+                  {club.current_President || "N/A"}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.divider} />
@@ -54,7 +77,7 @@ export default function ClubDetailScreen() {
           </>
         }
         data={clubEvents}
-        keyExtractor={(item) => item.storageId}
+        keyExtractor={(item) => item.eventId}
         renderItem={({ item }) => (
           <View style={styles.eventCard}>
             <Image source={{ uri: item.eventPoster }} style={styles.eventImage} />
@@ -69,68 +92,52 @@ export default function ClubDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: 50,
-  },
+  container: { flex: 1, backgroundColor: "#fff", paddingTop: 50 },
   backButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 10,
     left: 12,
     zIndex: 2,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
     padding: 6,
     borderRadius: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 3,
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listContent: {
-    paddingBottom: 100,
-    backgroundColor: '#fff',
-  },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+  listContent: { paddingBottom: 100, backgroundColor: "#fff" },
   logo: {
     width: width - 24,
     height: 180,
     borderRadius: 16,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: 12,
   },
   infoCard: {
     borderWidth: 1,
-    borderColor: 'black',
+    borderColor: "#000",
     borderRadius: 14,
     padding: 16,
     marginHorizontal: 12,
     marginTop: 16,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 6,
-  },
-  description: {
-    fontSize: 14,
-    color: '#555',
-    lineHeight: 20,
-  },
+  title: { fontSize: 22, fontWeight: "bold", marginBottom: 6 },
+  description: { fontSize: 14, color: "#555", lineHeight: 20 },
+  metaBox: { marginTop: 10 },
+  meta: { fontSize: 13, color: "#444", marginVertical: 2 },
+  metaLabel: { fontWeight: "600", color: "#000" },
   divider: {
     height: 3,
-    backgroundColor: '#555',
+    backgroundColor: "#555",
     width: width * 0.8,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginVertical: 20,
     borderRadius: 2,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     marginLeft: 16,
     marginBottom: 10,
   },
@@ -139,12 +146,12 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 10,
     margin: 5,
-    backgroundColor: '#f2f2f2',
-    overflow: 'hidden',
+    backgroundColor: "#f2f2f2",
+    overflow: "hidden",
   },
   eventImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
 });

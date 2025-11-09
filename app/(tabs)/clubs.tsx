@@ -2,33 +2,45 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { View, FlatList, StyleSheet, Dimensions, Text } from 'react-native';
 import SearchBar from '@/components/SearchBar';
 import ClubCard from '@/components/ClubCard';
-import { getAllClubs, Club } from '@/api/clubs';
+// import { getAllClubs, Club } from '@/api/clubs';
 import type { ClubProfile } from '@/types/clubProfile';
+import { mockClubProfiles } from '@/constants/mockClubProfiles'; // 👈 import mock data
+
 
 const numColumns = 2;
 const { width } = Dimensions.get('window');
 const cardWidth = width / numColumns - 20;
 
+
 export default function clubs() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [clubs, setClubs] = useState<Club[]>([]);
+  const [clubs, setClubs] = useState<ClubProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch clubs from backend
-  useEffect(() => {
-    const fetchClubs = async () => {
-      try {
-        const data = await getAllClubs();
-        setClubs(data);
-      } catch (error) {
-        console.error('Error fetching clubs:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchClubs();
+    useEffect(() => {
+    // Simulate network delay
+    setTimeout(() => {
+      setClubs(mockClubProfiles);
+      setLoading(false);
+    }, 1000);
   }, []);
+
+  // Fetch clubs from backend
+  // useEffect(() => {
+  //   const fetchClubs = async () => {
+  //     try {
+  //       const data = await getAllClubs();
+  //       setClubs(data);
+  //     } catch (error) {
+  //       console.error('Error fetching clubs:', error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchClubs();
+  // }, []);
 
   // Filter clubs based on search query
   const filteredClubs = useMemo(() => {
@@ -39,13 +51,16 @@ export default function clubs() {
   }, [searchQuery, clubs]);
 
   // Render each club
-  const renderClub = ({ item }: { item: Club }) => {
+  const renderClub = ({ item }: { item: ClubProfile }) => {
     // Map Club → ClubProfile for ClubCard component
     const clubProfile: ClubProfile = {
-      clubId: item.id,
-      clubName: item.name,
+      id: item.id,
+      name: item.name,
       description: item.description || '',
-      clubLogo: item.logo_url || '',
+      logo_url: item.logo_url || '',
+      created_at: item.created_at || '',
+      original_President: item.original_President || '',
+      current_President: item.current_President || '',
     };
 
     return (

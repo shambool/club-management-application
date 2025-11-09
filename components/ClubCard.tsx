@@ -3,36 +3,42 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { ClubProfile } from '@/types/clubProfile';
 
-const PLACEHOLDER_IMAGE =
-  'https://via.placeholder.com/150?text=No+Image'; // fallback image
+const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/150?text=No+Image';
 
 export default function ClubCard({ club }: { club: ClubProfile }) {
   const router = useRouter();
 
+  // Handle description safely (optional field)
+  const descriptionText = club.description ?? 'No description available';
   const shortDesc =
-    club.description.length > 30
-      ? club.description.slice(0, 30) + '...'
-      : club.description;
+    descriptionText.length > 30
+      ? descriptionText.slice(0, 30) + '...'
+      : descriptionText;
 
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={() =>
-        router.push({ pathname: '/club/[id]', params: { id: club.clubId } })
-      }
+      onPress={() => router.push({ pathname: '/club/[id]', params: { id: club.id } })}
     >
       <View style={styles.imageWrapper}>
         <Image
-          source={{ uri: club.clubLogo || PLACEHOLDER_IMAGE }}
+          source={{ uri: club.logo_url || PLACEHOLDER_IMAGE }}
           style={styles.image}
         />
       </View>
 
       <View style={styles.info}>
-        <Text style={styles.title}>{club.clubName}</Text>
+        <Text style={styles.title}>{club.name}</Text>
         <View style={styles.descRow}>
           <Text style={styles.description}>{shortDesc}</Text>
         </View>
+
+        {/* Optional: Show current president if available */}
+        {club.current_President && (
+          <Text style={styles.president}>
+            President: {club.current_President}
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -54,7 +60,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
-    backgroundColor: '#f0f0f0', // subtle background if image is loading
+    backgroundColor: '#f0f0f0',
   },
   image: {
     width: '100%',
@@ -78,5 +84,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#666',
     flexShrink: 1,
+  },
+  president: {
+    fontSize: 10,
+    color: '#888',
+    marginTop: 2,
   },
 });
