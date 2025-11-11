@@ -12,10 +12,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { mockClubProfiles } from "@/constants/mockClubProfiles";
 import { mockEvents } from "@/constants/mockEvents";
+import type { ClubProfile } from "@/types/clubProfile";
 import type { Event } from "@/types/event";
+import SnakeEventsGrid from "@/components/SnakeEventsGrid"; // 👈 add this
 
 const { width } = Dimensions.get("window");
-const numColumns = 3;
 
 export default function ClubDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,9 +24,14 @@ export default function ClubDetailScreen() {
 
   const club = mockClubProfiles.find((c) => c.id === id);
 
+  const onBack = () => {
+  if (router.canGoBack()) router.back();
+  else router.replace("/clubs"); // or "/clubs" — pick your fallback
+};
+
+
   const clubEvents = useMemo<Event[]>(() => {
     if (!club) return [];
-    // Filter only events belonging to this club
     return mockEvents.filter((event) => event.club.id === club.id);
   }, [club]);
 
@@ -39,12 +45,21 @@ export default function ClubDetailScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      {/* Top Buttons */}
+      <TouchableOpacity style={styles.backButton} onPress={onBack}>
         <Ionicons name="arrow-back" size={24} color="black" />
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={styles.feedbackButton}
+        onPress={() => router.push("/feedback")}
+      >
+        <Ionicons name="chatbubbles-outline" size={20} color="#fff" />
+        <Text style={styles.feedbackText}>Feedback</Text>
+      </TouchableOpacity>
+
       <FlatList
+        // All content lives in the header now (one scroll, no nested lists)
         ListHeaderComponent={
           <>
             {/* Club Image */}
@@ -74,16 +89,23 @@ export default function ClubDetailScreen() {
 
             <View style={styles.divider} />
             <Text style={styles.sectionTitle}>Events</Text>
+
+            {/* 🔽 Serpentine events grid (newest→oldest, snaking) */}
+            <View style={{ paddingHorizontal: 12, marginBottom: 12 }}>
+              <SnakeEventsGrid<Event>
+                data={clubEvents}
+                columns={3}
+                getId={(e) => e.eventId}
+                getImageUrl={(e) => e.eventPoster}
+                getCreatedAt={(e) => e.createdAt}
+                onPressItem={(e) => console.log("open event", e.eventId)}
+              />
+            </View>
           </>
         }
-        data={clubEvents}
-        keyExtractor={(item) => item.eventId}
-        renderItem={({ item }) => (
-          <View style={styles.eventCard}>
-            <Image source={{ uri: item.eventPoster }} style={styles.eventImage} />
-          </View>
-        )}
-        numColumns={numColumns}
+        data={[]}                    // nothing else to render
+        keyExtractor={() => "x"}     // harmless placeholder
+        renderItem={null as any}     // no item renderer
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
       />
@@ -97,13 +119,34 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 10,
     left: 12,
-    zIndex: 2,
+    zIndex: 3,
     backgroundColor: "#f9f9f9",
     padding: 6,
     borderRadius: 8,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 3,
+  },
+  feedbackButton: {
+    position: "absolute",
+    top: 10,
+    right: 12,
+    zIndex: 3,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#007AFF",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  feedbackText: {
+    color: "#fff",
+    fontWeight: "600",
+    marginLeft: 5,
+    fontSize: 13,
   },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   listContent: { paddingBottom: 100, backgroundColor: "#fff" },
@@ -140,18 +183,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 16,
     marginBottom: 10,
-  },
-  eventCard: {
-    flex: 1,
-    aspectRatio: 1,
-    borderRadius: 10,
-    margin: 5,
-    backgroundColor: "#f2f2f2",
-    overflow: "hidden",
-  },
-  eventImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
   },
 });
