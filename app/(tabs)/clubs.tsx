@@ -1,79 +1,74 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, FlatList, StyleSheet, Dimensions, Text } from 'react-native';
-import SearchBar from '@/components/SearchBar';
-import ClubCard from '@/components/ClubCard';
-// import { getAllClubs, Club } from '@/api/clubs';
-import type { ClubProfile } from '@/types/clubProfile';
-import { mockClubProfiles } from '@/constants/mockClubProfiles'; // 👈 import mock data
-
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { View, FlatList, StyleSheet, Dimensions, Text, RefreshControl } from "react-native";
+import SearchBar from "@/components/SearchBar";
+import ClubCard from "@/components/ClubCard";
+import type { ClubProfile } from "@/types/clubProfile";
+import { getAllClubs, type Club } from "@/api/clubs";
 
 const numColumns = 2;
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 const cardWidth = width / numColumns - 20;
 
+// map server row -> UI type
+function mapClubToProfile(row: Club): ClubProfile {
+  return {
+    id: String(row.id),
+    name: row.title,
+    description: row.description ?? "",
+    logo_url: row.logourl ?? "",
+    created_at: row.createdat ?? "",
+    // you don't return these from the list route; leave empty for now
+    original_President: "",
+    current_President: "",
+  };
+}
 
-export default function clubs() {
-  const [searchQuery, setSearchQuery] = useState('');
+export default function ClubsTab() {
+  const [searchQuery, setSearchQuery] = useState("");
   const [clubs, setClubs] = useState<ClubProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-
-    useEffect(() => {
-    // Simulate network delay
-    setTimeout(() => {
-      setClubs(mockClubProfiles);
+  const load = useCallback(async () => {
+    try {
+      setError(null);
+      const rows = await getAllClubs(); // uses axios to call GET /clubs (paged under the hood)
+      setClubs(rows.map(mapClubToProfile));
+    } catch (e: any) {
+      console.error("Failed to fetch clubs", e?.message || e);
+      setError("Failed to load clubs.");
+    } finally {
       setLoading(false);
-    }, 1000);
+      setRefreshing(false);
+    }
   }, []);
 
-  // Fetch clubs from backend
-  // useEffect(() => {
-  //   const fetchClubs = async () => {
-  //     try {
-  //       const data = await getAllClubs();
-  //       setClubs(data);
-  //     } catch (error) {
-  //       console.error('Error fetching clubs:', error);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  //   fetchClubs();
-  // }, []);
+  const onRefresh = () => {
+    setRefreshing(true);
+    load();
+  };
 
-  // Filter clubs based on search query
   const filteredClubs = useMemo(() => {
-    const query = searchQuery.toLowerCase();
-    return clubs.filter((club) =>
-      club.name.toLowerCase().includes(query)
-    );
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return clubs;
+    return clubs.filter((c) => c.name.toLowerCase().includes(q));
   }, [searchQuery, clubs]);
 
-  // Render each club
-  const renderClub = ({ item }: { item: ClubProfile }) => {
-    // Map Club → ClubProfile for ClubCard component
-    const clubProfile: ClubProfile = {
-      id: item.id,
-      name: item.name,
-      description: item.description || '',
-      logo_url: item.logo_url || '',
-      created_at: item.created_at || '',
-      original_President: item.original_President || '',
-      current_President: item.current_President || '',
-    };
-
-    return (
-      <View style={{ width: cardWidth, marginBottom: 12 }}>
-        <ClubCard club={clubProfile} />
-      </View>
-    );
-  };
+  const renderClub = ({ item }: { item: ClubProfile }) => (
+    <View style={{ width: cardWidth, marginBottom: 12 }}>
+      <ClubCard club={item} />
+    </View>
+  );
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text>Loading clubs...</Text>
+        <Text>Loading clubs…</Text>
       </View>
     );
   }
@@ -88,25 +83,28 @@ export default function clubs() {
         />
       </View>
 
+      {error ? (
+        <Text style={{ color: "red", marginBottom: 8 }}>{error}</Text>
+      ) : null}
+
       <FlatList
         data={filteredClubs}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id} // id is string after mapping
         renderItem={renderClub}
         numColumns={numColumns}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListEmptyComponent={<Text>No clubs found.</Text>}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 12 },
-  searchWrapper: {
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  listContent: {
-    paddingBottom: 100,
-  },
+  container: { flex: 1, backgroundColor: "#fff", padding: 12 },
+  searchWrapper: { marginTop: 10, marginBottom: 8 },
+  listContent: { paddingBottom: 100 },
 });

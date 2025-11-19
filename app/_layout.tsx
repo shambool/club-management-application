@@ -1,39 +1,42 @@
-import React, { useState, useEffect } from "react";
+// app/_layout.tsx
+import React from "react";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export default function RootLayout() {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const checkLoginStatus = async () => {
-      const loggedIn = await AsyncStorage.getItem("isLoggedIn");
-      setIsLoggedIn(loggedIn === "true");
-    };
-    checkLoginStatus();
-  }, []);
+function RootNavigator() {
+  const { user, initializing } = useAuth();
 
-  if (isLoggedIn === null) {
-    // You can return a splash screen or loading spinner here if you want
+  // While we’re checking /api/me/user for an existing session
+  if (initializing) {
+    // You can return a splash / loader instead of null if you want
     return null;
   }
 
+  const isLoggedIn = !!user;
+
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#FFF9E6" }}>
-        <Stack screenOptions={{ headerShown: false }}>
-          {!isLoggedIn ? (
-            // 👇 Default route if not logged in
-            <Stack.Screen name="login" />
-          ) : (
-            // 👇 Once logged in, go to your tab layout (your main app)
-            <Stack.Screen name="(tabs)" />
-          )}
-        </Stack>
-      </SafeAreaView>
-    </SafeAreaProvider>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#FFF9E6" }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        {!isLoggedIn ? (
+          // 👇 When NOT logged in, show only login stack
+          <Stack.Screen name="login" />
+        ) : (
+          // 👇 When logged in, show your tabs layout
+          <Stack.Screen name="(tabs)" />
+        )}
+      </Stack>
+    </SafeAreaView>
   );
 }
 
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <SafeAreaProvider>
+        <RootNavigator />
+      </SafeAreaProvider>
+    </AuthProvider>
+  );
+}

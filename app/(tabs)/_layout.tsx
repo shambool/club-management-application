@@ -39,6 +39,14 @@ const TabLayout = () => {
         }}
       />
       <Tabs.Screen
+        name="profile"
+        options={{
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="awards"
         options={{
           tabBarIcon: ({ size, color }) => (

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -7,34 +7,92 @@ import {
   Image,
   Pressable,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-import { mockEvents } from "@/constants/mockEvents";
+import { getClubEvents, getClub, type EventRow } from "@/api/clubs";
 import type { Event } from "@/types/event";
+import type { ClubProfile } from "@/types/clubProfile";
+
+/** Map backend EventRow -> your UI Event type */
+function mapRowToEvent(row: EventRow, club: ClubProfile): Event {
+  return {
+    eventId: String(row.id),
+    eventTitle: row.title,
+    eventPoster: row.posterimgurl ?? "",
+    attending: 0, // not provided yet
+    hasVolunteerOption: (row.volunteer_points ?? 0) > 0,
+    startDate: row.startdate,
+    duration: "",
+    place: row.location ?? "",
+    desc: row.description ?? "",
+    club,
+    externalLink: row.externallink ?? "",
+    Attendee_points: row.attendee_points ?? 0,
+    Volunteer_points: row.volunteer_points ?? 0,
+    createdAt: row.createdat ?? row.startdate,
+  };
+}
 
 export default function EventFeedbackList() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { clubId } = useLocalSearchParams<{ clubId?: string }>();
 
-  // Filter by club and sort newest -> oldest
-  const events: Event[] = useMemo(() => {
-    const list = mockEvents.filter((e) => (!clubId ? true : e.club.id === clubId));
-    return list.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setError(null);
+      if (!clubId) {
+        setError("Missing club ID");
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      const clubNum = Number(clubId);
+      const c = await getClub(clubNum);
+      const clubProfile: ClubProfile = {
+        id: String(c.id),
+        name: c.title,
+        description: c.description ?? "",
+        logo_url: c.logourl ?? "",
+        created_at: c.createdat ?? "",
+        original_President: c.originalpresident ? String(c.originalpresident) : "",
+        current_President: "",
+      };
+
+      const rows = await getClubEvents(clubNum);
+      const mapped = rows
+        .map((r) => mapRowToEvent(r as EventRow, clubProfile))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      setEvents(mapped);
+    } catch (e: any) {
+      console.error("Failed to fetch events:", e?.message || e);
+      setError("Failed to load events.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [clubId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const onBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
   const renderItem = ({ item }: { item: Event }) => (
     <Pressable
-      onPress={() =>
-        router.push(`/feedback/event/${item.eventId}?clubId=${clubId ?? ""}`)
-      }
+      onPress={() => router.push(`/feedback/event/${item.eventId}?clubId=${clubId ?? ""}`)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.95 }]}
       android_ripple={{ color: "#E5E7EB" }}
     >
@@ -60,7 +118,6 @@ export default function EventFeedbackList() {
       </Pressable>
 
       <FlatList
-        // ⬇️ Push content down so it never collides with back button
         contentContainerStyle={[
           styles.content,
           {
@@ -76,7 +133,16 @@ export default function EventFeedbackList() {
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No events yet for this club.</Text>
+          <Text style={styles.emptyText}>
+            {loading
+              ? "Loading events…"
+              : error
+              ? error
+              : "No events yet for this club."}
+          </Text>
+        }
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />
         }
       />
     </View>
@@ -106,13 +172,11 @@ const styles = StyleSheet.create({
     ...shadow,
   },
 
-  // List spacing
   content: {
     paddingHorizontal: 16,
-    gap: 10, // nice even rhythm between header and cards
+    gap: 10,
   },
 
-  // Header title (tighter)
   title: {
     fontSize: 22,
     fontWeight: "700",
@@ -121,7 +185,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
-  // Event card (slightly more compact radius/border)
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -133,7 +196,6 @@ const styles = StyleSheet.create({
     ...shadow,
   },
 
-  // Thumbnail (compact)
   thumb: {
     width: 92,
     height: 92,

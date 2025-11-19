@@ -1,132 +1,133 @@
-// API/events.ts
+// src/api/events.ts
 import axios from "axios";
 
-// =============================
-// Event & Club types
-// =============================
-export type Event = {
-  id: string;
-  title: string;
-  description?: string;
-  location?: string;
-  start_time?: string;
-  end_time?: string;
-  requires_volunteers?: boolean;
-  image_url?: string;
-  created_at: string;
-  updated_at: string;
-  club_id: string;
-  club_name: string;
-  club_logo?: string;
-};
+/**
+ * Configure your API base URL via env:
+ *  - Expo: EXPO_PUBLIC_API_BASE_URL
+ */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:5050";
 
-const BASE_URL = "http://localhost:8080"; // replace with your backend URL
-
-const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 5000,
-  headers: {
-    "Content-Type": "application/json",
-  },
+export const eventsApi = axios.create({
+  baseURL: `${BASE_URL}/api/events`,
+  withCredentials: true, // send httpOnly auth cookie
+  headers: { "Content-Type": "application/json" },
 });
 
-// =============================
-// Get all events
-// =============================
-export const getAllEvents = async (): Promise<Event[]> => {
-  try {
-    const response = await api.get("/api/events"); // fetches events with club info via view
-    return response.data;
-  } catch (error: any) {
-    console.error("Error fetching events:", error.response?.data || error.message);
-    throw error;
-  }
+/* =========================
+   Types aligned to /routes/events.js
+   ========================= */
+
+export type ClubSlim = {
+  id: number;
+  title: string;
+  logourl?: string | null;
 };
 
-// =============================
-// Get single event by ID
-// =============================
-export const getEventById = async (id: string): Promise<Event> => {
-  try {
-    const response = await api.get(`/api/events/${id}`);
-    return response.data;
-  } catch (error: any) {
-    console.error(`Error fetching event ${id}:`, error.response?.data || error.message);
-    throw error;
-  }
+export type EventRow = {
+  id: number;
+  title: string;
+  description?: string | null;
+  posterimgurl?: string | null;
+  externallink?: string | null;
+  location?: string | null;
+  startdate: string; // ISO
+  enddate: string;   // ISO
+  attendee_points: number;
+  volunteer_points: number;
+  createdat: string; // ISO
+  // join alias from supabase select: clubs:clubid(...)
+  clubs?: ClubSlim | null;
 };
 
-// =============================
-// Create a new event
-// =============================
-export const createEvent = async (
-  token: string,
-  eventData: {
-    club_id: string;
-    title: string;
-    description?: string;
-    location?: string;
-    start_time?: string;
-    end_time?: string;
-    requires_volunteers?: boolean;
-    image_url?: string;
-  }
-): Promise<{ event: Event; qr?: string }> => {
-  try {
-    const response = await api.post("/api/events", eventData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
-  } catch (error: any) {
-    console.error("Error creating event:", error.response?.data || error.message);
-    throw error;
-  }
+export type EventsListResponse = { items: EventRow[] };
+export type EventDetailResponse = { event: EventRow };
+
+type OkResponse = { ok: boolean };
+
+/* =========================
+   Core event list/detail
+   ========================= */
+
+/** GET /events — list all events (past, present, future), ordered by startdate ASC */
+export async function getEvents(): Promise<EventRow[]> {
+  const { data } = await eventsApi.get<EventsListResponse>("/");
+  return data.items;
+}
+
+/** GET /events/:id — single event by id */
+export async function getEvent(id: number): Promise<EventRow> {
+  const { data } = await eventsApi.get<EventDetailResponse>(`/${id}`);
+  return data.event;
+}
+
+/** GET /events/upcoming — only upcoming events (server adds club_title/club_logourl) */
+export type UpcomingEventRow = EventRow & {
+  club_title?: string | null;
+  club_logourl?: string | null;
 };
 
-// =============================
-// Update an event
-// =============================
-export const updateEvent = async (
-  token: string,
-  id: string,
-  eventData: {
-    title?: string;
-    description?: string;
-    location?: string;
-    start_time?: string;
-    end_time?: string;
-    requires_volunteers?: boolean;
-    image_url?: string;
-  }
-): Promise<Event> => {
-  try {
-    const response = await api.put(`/api/events/${id}`, eventData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
-  } catch (error: any) {
-    console.error(`Error updating event ${id}:`, error.response?.data || error.message);
-    throw error;
-  }
+export async function getUpcomingEvents(): Promise<UpcomingEventRow[]> {
+  const { data } = await eventsApi.get<{ items: UpcomingEventRow[] }>(
+    "/upcoming"
+  );
+  return data.items;
+}
+
+/* =========================
+   Attendance / volunteering
+   ========================= */
+
+/** POST /events/:id/attend — mark current user as attending & award attendee points */
+export async function attendEvent(id: number): Promise<OkResponse> {
+  const { data } = await eventsApi.post<OkResponse>(`/${id}/attend`);
+  return data;
+}
+
+/** DELETE /events/:id/attend — cancel attendance & revoke attendee points (future events only) */
+export async function unattendEvent(id: number): Promise<OkResponse> {
+  const { data } = await eventsApi.delete<OkResponse>(`/${id}/attend`);
+  return data;
+}
+
+/** POST /events/:id/volunteer — mark current user as volunteering & award volunteer points */
+export async function volunteerEvent(id: number): Promise<OkResponse> {
+  const { data } = await eventsApi.post<OkResponse>(`/${id}/volunteer`);
+  return data;
+}
+
+/** DELETE /events/:id/volunteer — cancel volunteering & revoke volunteer points (future events only) */
+export async function unvolunteerEvent(id: number): Promise<OkResponse> {
+  const { data } = await eventsApi.delete<OkResponse>(`/${id}/volunteer`);
+  return data;
+}
+
+/* =========================
+   Optional helpers
+   ========================= */
+
+/** Get events for a specific club (client-side filter over getEvents) */
+export async function getEventsByClubId(clubId: number): Promise<EventRow[]> {
+  const items = await getEvents();
+  return items.filter((e) => e.clubs?.id === clubId);
+}
+
+export type EventCard = {
+  id: number;
+  title: string;
+  poster?: string;
+  start: string;
+  clubTitle?: string | null;
+  clubLogo?: string | null;
 };
 
-// =============================
-// Delete an event
-// =============================
-export const deleteEvent = async (token: string, id: string): Promise<{ message: string; event: Event }> => {
-  try {
-    const response = await api.delete(`/api/events/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
-  } catch (error: any) {
-    console.error(`Error deleting event ${id}:`, error.response?.data || error.message);
-    throw error;
-  }
-};
+export function toEventCard(e: EventRow | UpcomingEventRow): EventCard {
+  return {
+    id: e.id,
+    title: e.title,
+    poster: e.posterimgurl ?? undefined,
+    start: e.startdate,
+    clubTitle: "club_title" in e ? e.club_title : e.clubs?.title ?? null,
+    clubLogo: "club_logourl" in e ? e.club_logourl : e.clubs?.logourl ?? null,
+  };
+}

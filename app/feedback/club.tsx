@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -13,27 +13,54 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { mockClubProfiles } from "@/constants/mockClubProfiles"; // TEMP for name lookup
+
+import { getClub } from "@/api/clubs";
+import { createClubFeedback } from "@/api/feedback";
 
 export default function ClubFeedbackScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { clubId } = useLocalSearchParams<{ clubId?: string }>();
 
-  const clubName = useMemo(
-    () => mockClubProfiles.find((c) => c.id === clubId)?.name ?? "Club",
-    [clubId]
-  );
-
+  const [clubName, setClubName] = useState<string>("Club");
   const [text, setText] = useState("");
+  const [loading, setLoading] = useState(true);
   const submitEnabled = text.trim().length > 0;
 
-  const onBack = () =>
-    router.canGoBack() ? router.back() : router.replace("/");
-  const onSubmit = () => {
-    // Later: supabase.from("club_feedback").insert({ club_id: clubId, comment: text.trim() })
-    Alert.alert("Thanks!", "Your club feedback was sent (mock).");
-    router.back();
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (!clubId) return;
+        const clubNum = Number(clubId);
+        if (Number.isNaN(clubNum)) throw new Error("Invalid club ID");
+        const club = await getClub(clubNum);
+        setClubName(club.title || "Club");
+      } catch (e: any) {
+        console.error("Failed to load club:", e?.message || e);
+        setClubName("Club");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [clubId]);
+
+  const onBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
+
+  const onSubmit = async () => {
+    if (!clubId) return;
+    try {
+      const clubNum = Number(clubId);
+      await createClubFeedback({
+        clubid: clubNum,
+        message: text.trim() || null,
+      });
+      Alert.alert("Thanks!", "Your feedback was submitted successfully!");
+      router.back();
+    } catch (e: any) {
+      console.error(e?.message || e);
+      Alert.alert("Error", "Failed to submit feedback.");
+    }
   };
 
   return (
@@ -60,7 +87,9 @@ export default function ClubFeedbackScreen() {
             },
           ]}
         >
-          <Text style={styles.title}>{`Rate: ${clubName}!`}</Text>
+          <Text style={styles.title}>
+            {loading ? "Loading…" : `Rate: ${clubName}!`}
+          </Text>
 
           <View style={styles.hero}>
             <Ionicons name="school-outline" size={54} color="#22A699" />
@@ -110,39 +139,40 @@ const styles = StyleSheet.create({
   },
   content: { paddingHorizontal: 18, alignItems: "center", gap: 16 },
   title: {
-  fontSize: 22,
-  fontWeight: "700",
-  color: "#111",
-  textAlign: "center",
-  marginBottom: 10,
-},
-hero: {
-  width: "100%",
-  maxWidth: MAX_W,
-  height: 140,
-  borderRadius: 12,
-  backgroundColor: "#F7F8FB",
-  borderWidth: 1,
-  borderColor: "#E6E8F0",
-  alignItems: "center",
-  justifyContent: "center",
-  marginBottom: 14,
-},
- inputCard: {
-  width: "100%",
-  maxWidth: MAX_W,
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: "#E6E8F0",
-  backgroundColor: "#FFFFFF",
-  padding: 10,
-  marginBottom: 12,
-},
-input: {
-  minHeight: 140,
-  fontSize: 15,
-  color: "#111827",
-},  counter: { textAlign: "right", color: "#9BA0A6", fontSize: 12, marginTop: 6 },
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#111",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  hero: {
+    width: "100%",
+    maxWidth: MAX_W,
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: "#F7F8FB",
+    borderWidth: 1,
+    borderColor: "#E6E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  inputCard: {
+    width: "100%",
+    maxWidth: MAX_W,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E6E8F0",
+    backgroundColor: "#FFFFFF",
+    padding: 10,
+    marginBottom: 12,
+  },
+  input: {
+    minHeight: 140,
+    fontSize: 15,
+    color: "#111827",
+  },
+  counter: { textAlign: "right", color: "#9BA0A6", fontSize: 12, marginTop: 6 },
   submitBtn: {
     marginTop: 4,
     width: 190,
@@ -151,16 +181,6 @@ input: {
     backgroundColor: "#22A699",
     alignItems: "center",
     justifyContent: "center",
-  },
-
-  button: {
-    width: 220,                // ⬅️ smaller, centered
-    height: 42,
-    borderRadius: 999,
-    backgroundColor: "#8A5BF5",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
   },
   submitDisabled: { backgroundColor: "#BFE7DF" },
   submitText: { color: "#fff", fontWeight: "700", fontSize: 15 },

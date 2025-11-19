@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -14,47 +14,65 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
-// TEMP: mock source; later swap to Supabase fetch
-import { mockEvents } from "@/constants/mockEvents";
-import type { Event } from "@/types/event";
+import { getEvent, type EventRow } from "@/api/events";
+import { createFeedback } from "@/api/feedback";
 
 export default function EventRatingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { eventId, clubId } = useLocalSearchParams<{
-    eventId: string;
-    clubId?: string;
-  }>();
+  const { eventId, clubId } = useLocalSearchParams<{ eventId: string; clubId?: string }>();
 
-  // Look up event (newest -> oldest not needed here)
-  const event: Event | undefined = useMemo(
-    () => mockEvents.find((e) => e.eventId === eventId),
-    [eventId]
-  );
+  const [event, setEvent] = useState<EventRow | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // rating + text state
   const [rating, setRating] = useState<number>(0); // 0..5
   const [text, setText] = useState("");
 
-  const onBack = () =>
-    router.canGoBack() ? router.back() : router.replace("/");
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const idNum = Number(eventId);
+        if (!eventId || Number.isNaN(idNum)) throw new Error("Invalid event id");
+        const row = await getEvent(idNum);
+        setEvent(row);
+      } catch (e: any) {
+        console.error(e?.message || e);
+        Alert.alert("Error", "Failed to load event.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [eventId]);
 
+  const title = useMemo(() => (loading ? "Loading…" : `Rate: ${event?.title ?? "Event"}!`), [loading, event]);
+
+  const onBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
   const onStarPress = (value: number) => setRating(value);
 
-  const onSubmit = () => {
-    // Later: insert into Supabase (feedback table)
-    // Example payload shape (keep this for later wiring):
-    // {
-    //   event_id: eventId,
-    //   club_id: clubId ?? null,
-    //   rating: rating,           // integer 1..5
-    //   comment: text.trim(),
-    //   created_at: new Date().toISOString(),
-    //   user_id: <loggedInUserId> // when auth is hooked up
-    // }
+  const onSubmit = async () => {
+    try {
+      const clubNum = clubId ? Number(clubId) : NaN;
 
-    Alert.alert("Thank you!", "Your feedback has been recorded (mock).");
-    router.back();
+      if (rating === 0 && text.trim().length === 0) {
+        Alert.alert("Add something", "Give a rating or write a comment first.");
+        return;
+      }
+
+      await createFeedback({
+        clubid: Number.isNaN(clubNum) ? 0 : clubNum, // backend requires a number; pass the club's id
+        category: "Event",
+        rating: rating || null,
+        message: text.trim() || null,
+      });
+
+      Alert.alert("Thank you!", "Your feedback has been recorded.");
+      router.back();
+    } catch (e: any) {
+      console.error(e?.message || e);
+      Alert.alert("Error", "Could not submit your feedback.");
+    }
   };
 
   const submitEnabled = rating > 0 || text.trim().length > 0;
@@ -87,31 +105,17 @@ export default function EventRatingScreen() {
           ]}
         >
           {/* Title */}
-          <Text style={styles.title}>
-            {`Rate: ${event?.eventTitle ?? "Event"}!`}
-          </Text>
+          <Text style={styles.title}>{title}</Text>
 
           {/* Big icon “hero” */}
           <View style={styles.hero}>
-            <MaterialCommunityIcons
-              name="calendar-star"
-              size={54}
-              color="#4F63F6"
-            />
+            <MaterialCommunityIcons name="calendar-star" size={54} color="#4F63F6" />
           </View>
 
           {/* Stars */}
           <View style={styles.starsRow}>
             {[1, 2, 3, 4, 5].map((v) => (
-              <Pressable
-                key={v}
-                onPress={() => onStarPress(v)}
-                hitSlop={8}
-                style={({ pressed }) => [
-                  styles.starWrap,
-                  pressed && { opacity: 0.9 },
-                ]}
-              >
+              <Pressable key={v} onPress={() => onStarPress(v)} hitSlop={8} style={({ pressed }) => [styles.starWrap, pressed && { opacity: 0.9 }]}>
                 <Ionicons
                   name={v <= rating ? "star" : "star-outline"}
                   size={30}
@@ -146,9 +150,7 @@ export default function EventRatingScreen() {
               pressed && submitEnabled && { transform: [{ scale: 0.98 }] },
             ]}
           >
-            <Text
-              style={[styles.submitText, !submitEnabled && { opacity: 0.7 }]}
-            >
+            <Text style={[styles.submitText, !submitEnabled && { opacity: 0.7 }]}>
               Submit feedback
             </Text>
           </Pressable>
@@ -206,19 +208,10 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10, // ⟵ tight gap to textarea
+    marginBottom: 10,
   },
-  starWrap: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  input: {
-    minHeight: 140,
-    fontSize: 15,
-    color: "#111827",
-  },
+  starWrap: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  input: { minHeight: 140, fontSize: 15, color: "#111827" },
   counter: { textAlign: "right", color: "#9BA0A6", fontSize: 12, marginTop: 6 },
   submitBtn: {
     marginTop: 4,
@@ -228,16 +221,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#22A699",
     alignItems: "center",
     justifyContent: "center",
-  },
-
-  button: {
-    width: 220, // ⬅️ smaller, centered
-    height: 42,
-    borderRadius: 999,
-    backgroundColor: "#8A5BF5",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
   },
   submitDisabled: { backgroundColor: "#BFE7DF" },
   submitText: { color: "#fff", fontWeight: "700", fontSize: 15 },

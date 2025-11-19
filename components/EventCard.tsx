@@ -1,82 +1,167 @@
+// src/components/EventCard.tsx
 import React from "react";
-import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  Pressable,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { Event } from "@/types/event";
 
-export default function EventCard({ event }: { event: Event }) {
+type EventCardProps = {
+  event: Event;
+
+  // NEW: user-specific state from Feed
+  isAttending?: boolean;
+  isVolunteering?: boolean;
+  onToggleAttend?: () => void | Promise<void>;
+  onToggleVolunteer?: () => void | Promise<void>;
+};
+
+export default function EventCard({
+  event,
+  isAttending = false,
+  isVolunteering = false,
+  onToggleAttend,
+  onToggleVolunteer,
+}: EventCardProps) {
+  const handleAttendPress = () => {
+    if (onToggleAttend) onToggleAttend();
+  };
+
+  const handleVolunteerPress = () => {
+    if (onToggleVolunteer) onToggleVolunteer();
+  };
+
   return (
     <View style={styles.card}>
-      {/* Club Info Section */}
-      <View style={styles.clubRow}>
-        {event.club.logo_url ? (
-          <Image source={{ uri: event.club.logo_url }} style={styles.clubLogo} />
-        ) : (
-          <View style={[styles.clubLogo, { backgroundColor: "#eee" }]} />
-        )}
-        <Text style={styles.clubName}>{event.club.name}</Text>
-        <Text style={styles.separator}>•</Text>
-        <Text style={styles.eventTitle}>{event.eventTitle}</Text>
+      {/* header: avatar + club name etc. */}
+      <View style={styles.headerRow}>
+        <Image
+          source={{ uri: event.club.logo_url || "https://via.placeholder.com/40" }}
+          style={styles.avatar}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.clubName}>{event.club.name}</Text>
+          {/* you can add subtitle here if you want */}
+        </View>
+
+        {/* bookmark or whatever you already had on the right */}
       </View>
 
-      {/* Poster */}
-      {event.eventPoster ? (
-        <Image source={{ uri: event.eventPoster }} style={styles.poster} />
-      ) : null}
+      {/* poster */}
+      <Image
+        source={{ uri: event.eventPoster || "https://via.placeholder.com/400x250" }}
+        style={styles.poster}
+      />
 
-      {/* Action Icons */}
-      <View style={styles.actions}>
-        <TouchableOpacity>
-          <Ionicons name="checkmark-circle-outline" size={22} color="#333" />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Ionicons name="chatbubble-ellipses-outline" size={22} color="#333" />
-        </TouchableOpacity>
-        {event.hasVolunteerOption ? (
-          <TouchableOpacity>
-            <Ionicons name="hand-left-outline" size={22} color="#333" />
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 22 }} />
-        )}
+      {/* row of 3 icons under poster */}
+      <View style={styles.iconRow}>
+        {/* ✅ attend icon */}
+        <Pressable
+          onPress={handleAttendPress}
+          hitSlop={10}
+          style={styles.iconButton}
+        >
+          <Ionicons
+            name={isAttending ? "checkmark-circle" : "checkmark-circle-outline"}
+            size={26}
+            color={isAttending ? "#16A34A" : "#6B7280"}
+          />
+        </Pressable>
+
+        {/* 💬 middle icon (unchanged / display only) */}
+        <View style={styles.iconButton}>
+          <Ionicons name="chatbubble-ellipses-outline" size={26} color="#6B7280" />
+        </View>
+
+        {/* ✋ volunteer icon */}
+        <Pressable
+          onPress={handleVolunteerPress}
+          hitSlop={10}
+          style={styles.iconButton}
+        >
+          <Ionicons
+            name={isVolunteering ? "hand-left" : "hand-left-outline"}
+            size={26}
+            color={isVolunteering ? "#0EA5E9" : "#6B7280"}
+          />
+        </Pressable>
       </View>
 
-      {/* Description */}
-      <View style={styles.desc}>
-        <Text>🕒 {event.startDate} ({event.duration})</Text>
-        <Text>📍 {event.place}</Text>
-        <Text>{event.desc}</Text>
+      {/* the rest of your card: time, location, description, etc. */}
+      <View style={styles.infoBlock}>
+        <Text style={styles.timeText}>
+          {/* just an example – keep whatever you had */}
+          {event.startDate} ({event.duration})
+        </Text>
+        <Text style={styles.locationText}>📍 {event.place}</Text>
+        <Text style={styles.desc}>{event.desc}</Text>
+        {/* attendees count etc. */}
       </View>
-
-      <Text style={styles.attending}>👥 {event.attending} attending</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
     padding: 12,
-    marginBottom: 16,
+    marginBottom: 14,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
   },
-  clubRow: {
+  headerRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 8,
   },
-  clubLogo: { width: 32, height: 32, borderRadius: 16, marginRight: 8 },
-  clubName: { fontWeight: "bold", fontSize: 14 },
-  separator: { marginHorizontal: 6, color: "#999" },
-  eventTitle: { fontSize: 14, color: "#333", flexShrink: 1 },
-  poster: { width: "100%", height: 200, borderRadius: 8, marginBottom: 8 },
-  actions: {
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  clubName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  poster: {
+    width: "100%",
+    height: 220,
+    borderRadius: 14,
+    marginVertical: 8,
+  },
+  iconRow: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginVertical: 10,
+    alignItems: "center",
+    marginVertical: 8,
   },
-  desc: { gap: 4, marginBottom: 8 },
-  attending: { color: "#444", fontWeight: "500" },
+  iconButton: {
+    padding: 4,
+  },
+  infoBlock: {
+    marginTop: 4,
+  },
+  timeText: {
+    fontSize: 14,
+    color: "#111827",
+    marginBottom: 2,
+  },
+  locationText: {
+    fontSize: 14,
+    color: "#4B5563",
+    marginBottom: 4,
+  },
+  desc: {
+    fontSize: 14,
+    color: "#374151",
+  },
 });
